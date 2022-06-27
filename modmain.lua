@@ -10,7 +10,7 @@ local function inChanceLootTable(loot, table)
 end
 
 local function AddFruitFlyFruitLoot(inst)
-	if inst.components.lootdropper then
+	if inst.components.lootdropper ~= nil then
 		if inChanceLootTable("fruitflyfruit", inst.components.lootdropper.chanceloot) then
 			return
 		end
