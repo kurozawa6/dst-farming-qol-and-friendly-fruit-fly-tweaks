@@ -1,26 +1,31 @@
-local SetSharedLootTable = GLOBAL.SetSharedLootTable
+--if not GLOBAL.TheNet:GetIsServer() then return end
+local TheSim = GLOBAL.TheSim
+local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
-local function inChanceLootTable(loot, table)
-	for k, v in pairs(table) do
-		if v["prefab"] == loot then
-			return true
+AddPrefabPostInit("world", function(inst)
+	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
+	local function OnInit(inst)
+	    if inst:HasTag("fruitflyfruit") then
+		--Rebind Friendly Fruit Fly
+		local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst)
+		if fruitfly ~= nil and
+		    fruitfly.components.health ~= nil and
+		    not fruitfly.components.health:IsDead() and
+		    fruitfly.components.follower.leader ~= inst then
+		        fruitfly.components.follower:SetLeader(inst)
+		end
+	    end
+	end
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
+	
+	local pickseed = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, "LordLootSetupFunction", "pickseed")
+	local function LordLootSetupFunction(lootdropper)
+		lootdropper.chanceloot = nil
+		lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
+		for i = 1, 4 do
+			lootdropper:AddChanceLoot(pickseed(), 1.0)
+			lootdropper:AddChanceLoot(pickseed(), 0.25)
 		end
 	end
-	return false
-end
-
-local function AddFruitFlyFruitLoot(inst)
-	if inst.components.lootdropper ~= nil then
-		if inChanceLootTable("fruitflyfruit", inst.components.lootdropper.chanceloot) then
-			return
-		end
-		local items = {
-					{'plantmeat',     1.00},
-					{'fruitflyfruit', 1.00},
-				}
-		SetSharedLootTable(inst, items)
-		inst.components.lootdropper:SetChanceLootTable(inst)
-	end
-end
-
-AddPrefabPostInit("lordfruitfly", AddFruitFlyFruitLoot)
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
+end)
