@@ -1,13 +1,15 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
 local TheSim = GLOBAL.TheSim
 local TheWorld = GLOBAL.TheWorld
-local GROUND = GLOBAL.GROUND
+--local GROUND = GLOBAL.GROUND
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
 
 AddPrefabPostInit("world", function(inst)
+	
+	--FRUIT FLY
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
 	local function OnInit(inst)
 	    if inst:HasTag("fruitflyfruit") then
@@ -34,87 +36,24 @@ AddPrefabPostInit("world", function(inst)
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 
-	local GROWTH_STAGES = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, "GROWTH_STAGES")
-	print("6666")
-	print(GROWTH_STAGES)
-	
-	local call_for_reinforcements = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, "dig_up", "call_for_reinforcements")
-	local function OnPicked(inst, doer)
+	--FARM PLANTS
+	local function call_for_reinforcements(inst, target)
 		if inst.is_oversized then
 			SpawnPrefab(inst.plant_def.product_oversized).Transform:SetPosition(inst.Transform:GetWorldPosition())
+			print("7777") --debug
+		else
+			print("2222") --debug
 		end
-		local x, y, z = inst.Transform:GetWorldPosition()
-		if TheWorld.Map:GetTileAtPoint(x, y, z) == GROUND.FARMING_SOIL then
-			local soil = SpawnPrefab("farm_soil")
-			soil.Transform:SetPosition(x, y, z)
-			soil:PushEvent("breaksoil")
-		end
-
-		if not inst.is_oversized and inst:HasTag("farm_plant_killjoy") and math.random() < 0.05 then
-			local fruitfly = SpawnPrefab("fruitfly")
-			fruitfly.Transform:SetPosition(x, y, z)
-		end
-
-		call_for_reinforcements(inst, doer)
-	end
-
-	local function MakePickable(inst, enable, product)
-	    if not enable then
-		inst:RemoveTag("fruitflyspawner")
-		inst:RemoveComponent("pickable")
-	    else
-		if inst.components.pickable == nil then
-		    inst:AddComponent("pickable")
-		    inst.components.pickable.onpickedfn = OnPicked
-				inst.components.pickable.remove_when_picked = true
-		end
-		    inst.components.pickable:SetUp(nil)
-			inst.components.pickable.use_lootdropper_for_product = true
-			inst.components.pickable.picksound = product == "spoiled_food" and "dontstarve/wilson/harvest_berries" or "dontstarve/wilson/pickup_plants"
-			if not inst:HasTag("farm_plant_killjoy") then
-				inst:AddTag("fruitflyspawner")
-			else
-				inst:RemoveTag("fruitflyspawner")
+		if not target:HasTag("plantkin") then
+			local x, y, z = inst.Transform:GetWorldPosition()
+			local defenders = TheSim:FindEntities(x, y, z, TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
+			for _, defender in ipairs(defenders) do
+				if defender.components.burnable == nil or not defender.components.burnable.burning then
+					defender:PushEvent("defend_farm_plant", {source = inst, target = target})
+					break
+				end
 			end
-	    end
-	end
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, MakePickable, "MakePickable")
-	
---[[
-	local function oversized_onfinishwork(inst, chopper)
-	    inst.components.lootdropper:DropLoot()
-	    inst.components.lootdropper:DropLoot()
-	    inst.components.lootdropper:DropLoot()
-	    inst.components.lootdropper:DropLoot()
-	    inst.components.lootdropper:DropLoot()
-	    inst:Remove()
-	end
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.potato_oversized.fn, oversized_onfinishwork, "oversized_onfinishwork")
-]]
---[[
-	local function OnPicked(inst, doer)
-		if inst.is_oversized then
-			SpawnPrefab(inst.plant_def.product_oversized).Transform:SetPosition(inst.Transform:GetWorldPosition())
 		end
-		local x, y, z = inst.Transform:GetWorldPosition()
-		if TheWorld.Map:GetTileAtPoint(x, y, z) == GROUND.FARMING_SOIL then
-			local soil = SpawnPrefab("farm_soil")
-			soil.Transform:SetPosition(x, y, z)
-			soil:PushEvent("breaksoil")
-		end
-
-		if not inst.is_oversized and inst:HasTag("farm_plant_killjoy") and math.random() < 0.05 then
-			local fruitfly = SpawnPrefab("fruitfly")
-			fruitfly.Transform:SetPosition(x, y, z)
-		end
-
-		call_for_reinforcements(inst, doer)
 	end
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, OnPicked, "MakePickable", "OnPicked")
-]]
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
 end)
-
---AddPrefabPostInit("prefabs/farm_plants", function(inst)
---end)
-
---fn/makeplant -> growth_stages -> makepickable -> onpicked
