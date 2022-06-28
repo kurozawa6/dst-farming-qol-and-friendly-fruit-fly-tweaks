@@ -9,6 +9,7 @@ local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 AddPrefabPostInit("world", function(inst)
 	
+	
 	--FRUIT FLY
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
 	local function OnInit(inst)
@@ -36,13 +37,14 @@ AddPrefabPostInit("world", function(inst)
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 
+
 	--FARM PLANTS
 	local function call_for_reinforcements(inst, target)
 		if inst.is_oversized then
 			SpawnPrefab(inst.plant_def.product_oversized).Transform:SetPosition(inst.Transform:GetWorldPosition())
-			print("7777") --debug
+			--print("7777") --debug
 		else
-			print("2222") --debug
+			--print("2222") --debug
 		end
 		if not target:HasTag("plantkin") then
 			local x, y, z = inst.Transform:GetWorldPosition()
@@ -56,4 +58,25 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
+
+	local function SetupLoot(lootdropper)
+		local inst = lootdropper.inst
+
+		if inst:HasTag("farm_plant_killjoy") then -- if rotten
+			lootdropper:SetLoot(inst.is_oversized and inst.plant_def.loot_oversized_rot or spoiled_food_loot)
+		elseif inst.components.pickable ~= nil then
+			local plant_stress = inst.components.farmplantstress ~= nil and inst.components.farmplantstress:GetFinalStressState() or FARM_PLANT_STRESS.HIGH
+
+			if inst.is_oversized then
+				lootdropper:SetLoot({})
+			elseif plant_stress == FARM_PLANT_STRESS.LOW or plant_stress == FARM_PLANT_STRESS.NONE then
+				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed, inst.plant_def.seed})
+			elseif plant_stress == FARM_PLANT_STRESS.MODERATE then
+				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed})
+			else -- plant_stress == FARM_PLANT_STRESS.HIGH
+				lootdropper:SetLoot({inst.plant_def.product})
+			end
+		end
+	end
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, SetupLoot, "SetupLoot")
 end)
