@@ -1,7 +1,5 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
 local TheSim = GLOBAL.TheSim
-local TheWorld = GLOBAL.TheWorld
---local GROUND = GLOBAL.GROUND
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
@@ -42,9 +40,7 @@ AddPrefabPostInit("world", function(inst)
 	local function call_for_reinforcements(inst, target)
 		if inst.is_oversized then
 			SpawnPrefab(inst.plant_def.product_oversized).Transform:SetPosition(inst.Transform:GetWorldPosition())
-			--print("7777") --debug
-		else
-			--print("2222") --debug
+			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants")
 		end
 		if not target:HasTag("plantkin") then
 			local x, y, z = inst.Transform:GetWorldPosition()
@@ -68,7 +64,7 @@ AddPrefabPostInit("world", function(inst)
 			local plant_stress = inst.components.farmplantstress ~= nil and inst.components.farmplantstress:GetFinalStressState() or FARM_PLANT_STRESS.HIGH
 
 			if inst.is_oversized then
-				lootdropper:SetLoot({})
+				lootdropper:SetLoot({}) -- old loot replaced by above SpawnPrefab
 			elseif plant_stress == FARM_PLANT_STRESS.LOW or plant_stress == FARM_PLANT_STRESS.NONE then
 				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed, inst.plant_def.seed})
 			elseif plant_stress == FARM_PLANT_STRESS.MODERATE then
@@ -79,4 +75,7 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, SetupLoot, "SetupLoot")
+	
+	local OVERSIZED_PHYSICS_RADIUS = 0.1 --default, configurable
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
 end)
