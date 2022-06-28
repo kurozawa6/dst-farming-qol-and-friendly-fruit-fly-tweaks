@@ -11,14 +11,14 @@ AddPrefabPostInit("world", function(inst)
 	--FRUIT FLY
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
 	local function OnInit(inst)
-	    if inst:HasTag("fruitflyfruit") then
+		if inst:HasTag("fruitflyfruit") then
 		--Rebind Friendly Fruit Fly
 		local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst)
 		if fruitfly ~= nil and
-		    fruitfly.components.health ~= nil and
-		    not fruitfly.components.health:IsDead() and
-		    fruitfly.components.follower.leader ~= inst then
-		        fruitfly.components.follower:SetLeader(inst)
+			fruitfly.components.health ~= nil and
+			not fruitfly.components.health:IsDead() and
+			fruitfly.components.follower.leader ~= inst then
+				fruitfly.components.follower:SetLeader(inst)
 		end
 	    end
 	end
@@ -75,7 +75,7 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.farm_plant_potato.fn, SetupLoot, "SetupLoot")
-	
+
 	local OVERSIZED_PHYSICS_RADIUS = 0.1 --default, configurable
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
 end)
