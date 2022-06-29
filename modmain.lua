@@ -4,14 +4,14 @@ local SpawnPrefab = GLOBAL.SpawnPrefab
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
+
+
+-- FRUIT FLY
 AddPrefabPostInit("friendlyfruitfly", function(inst)
-	if inst.compononents == nil then return end
-	inst.components.locomotor.walkspeed = 4 * inst.components.locomotor.walkspeed
+	if inst.components == nil or inst.components.locomotor == nil then return end
+	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
 end)
-
 AddPrefabPostInit("world", function(inst)
-
-	-- FRUIT FLY
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
 	local function OnInit(inst)
 		if inst:HasTag("fruitflyfruit") then
@@ -37,9 +37,12 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
+end)
 
 
-	-- FARM PLANTS
+-- FARM PLANTS
+AddPrefabPostInit("world", function(inst)
+
 	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
 		if inst.is_oversized then
 			SpawnPrefab(inst.plant_def.product_oversized).Transform:SetPosition(inst.Transform:GetWorldPosition()) --pseudo-loot, main function change
