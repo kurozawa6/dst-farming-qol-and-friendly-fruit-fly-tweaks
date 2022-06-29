@@ -16,7 +16,7 @@ AddPrefabPostInit("world", function(inst)
 	local function OnInit(inst)
 		if inst:HasTag("fruitflyfruit") then
 		--Rebind Friendly Fruit Fly
-		local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --to finish
+		local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --TO FINISH
 		if fruitfly ~= nil and
 			fruitfly.components.health ~= nil and
 			not fruitfly.components.health:IsDead() and
@@ -38,15 +38,46 @@ AddPrefabPostInit("world", function(inst)
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
+AddBrainPostInit("friendlyfruitflybrain", function(brain)
+	local SEE_DIST = 100
+	local index = nil
+    for i,v in ipairs(brain.bt.root.children) do
+        if v.name == "FindFarmPlant" then
+            index = i
+            break
+        end
+    end
+	UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
+end)
+
+--Prefabs.friendlyfruitfly.fn -> *FriendlyFruitFlyBrain -> OnStart -> *FindFarmPlant -> IsNearFollowPos -> SEE_DIST
+--friendlybrain
 
 
 -- FARM PLANTS
+AddPrefabPostInitAny(function(inst)
+	if not (inst:HasTag("oversized_veggie") and inst:HasTag("waxable")) then return end
+	if inst.components == nil then return end
+	inst:AddComponent("pickable")
+	inst.components.pickable.remove_when_picked = true
+	inst.components.pickable:SetUp(nil)
+	inst.components.pickable.use_lootdropper_for_product = true
+	inst.components.pickable.picksound = "dontstarve/wilson/harvest_berries"
+	--inst.components.pickable.droppicked = true --experiment, picksound doesn't work when on
+end)
 AddPrefabPostInit("world", function(inst)
-
+	local function SpawnPseudoCropLoot(inst) --function to spawnprefab a pseudo loot from loot source location
+		local pseudoloot = SpawnPrefab(inst.plant_def.product_oversized)
+		if pseudoloot ~= nil then
+			pseudoloot.Transform:SetPosition(inst.Transform:GetWorldPosition())
+			pseudoloot.from_plant = true --fixes pseudoloot produce scale new record not being registered
+			--return pseudoloot
+		end
+	end
 	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
 		if inst.is_oversized then
-			SpawnPrefab(inst.plant_def.product_oversized).Transform:SetPosition(inst.Transform:GetWorldPosition()) --pseudo-loot, main function change
-			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound, sound can't be made from empty loot, I see no other way
+			SpawnPseudoCropLoot(inst) --pseudo-loot, main function change
+			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound, sound can't be made from empty loot
 		end
 		if not target:HasTag("plantkin") then
 			local x, y, z = inst.Transform:GetWorldPosition()
