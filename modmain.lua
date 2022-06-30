@@ -39,7 +39,7 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-	local SEE_DIST = 100
+	local SEE_DIST = 30
 	local index = nil
     for i,v in ipairs(brain.bt.root.children) do
         if v.name == "FindFarmPlant" then
