@@ -23,14 +23,14 @@ AddPrefabPostInit("world", function(inst)
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
 	local function OnInit(inst)
 		if inst:HasTag("fruitflyfruit") then
-		--Rebind Friendly Fruit Fly
-		local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --TO FINISH
-		if fruitfly ~= nil and
-			fruitfly.components.health ~= nil and
-			not fruitfly.components.health:IsDead() and
-			fruitfly.components.follower.leader ~= inst then
-				fruitfly.components.follower:SetLeader(inst)
-		end
+			--Rebind Friendly Fruit Fly
+			local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --TO FINISH
+			if fruitfly ~= nil and
+				fruitfly.components.health ~= nil and
+				not fruitfly.components.health:IsDead() and
+				fruitfly.components.follower.leader ~= inst then
+					fruitfly.components.follower:SetLeader(inst)
+			end
 	    end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
