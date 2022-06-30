@@ -3,7 +3,12 @@ local TheSim = GLOBAL.TheSim
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
+local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
+local SUCCESS = GLOBAL.SUCCESS
+local FAILED = GLOBAL.FAILED
+local READY = GLOBAL.READY
+local RUNNING = GLOBAL.RUNNING
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
@@ -42,40 +47,47 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-	local SEE_DIST_NEW = 40
-	local SEE_DIST = 20
-
-	local function ModifiedGetFollowPos(inst, plant)
-		local followpos = inst.components.follower.leader and inst.components.follower.leader:GetPosition() or inst:GetPosition()
-		if plant == nil then return followpos end
-		local plantpos = plant:GetPosition()
-		if distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW then
-			followpos.x = plantpos.x
-			followpos.z = plantpos.z
-			print("6666 followpos set to plantpos")
-		else
-			followpos.x = plantpos.x + SEE_DIST + 1
-			followpos.z = plantpos.z --distance total = SEE_DIST + 1
-			print("6666 followpos set to far from plantpos")
-		end
-		return followpos
-	end
-
-	local function ModifiedIsNearFollowPos(self, plant)
+	local SEE_DIST_NEW = 30 --replaces local variable SEE_DIST from original
+	local function ModifiedIsNearFollowPos(self, plant) --a local fn from original, only SEE_DIST is changed
 		local followpos = self.getfollowposfn(self.inst)
 		local plantpos = plant:GetPosition()
-		return distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW
+		return distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW --main function change
 	end
 
 	local FARMPLANT_MUSTTAGS = { "farmplantstress" }
 	local FARMPLANT_NOTAGS = { "farm_plant_killjoy" }
 	local function ModifiedPickTarget(self)
-		self.inst.planttarget = FindEntity(self.inst, SEE_DIST_NEW, function(plant)
-			if ModifiedIsNearFollowPos(self, plant) and (self.validplantfn == nil or self.validplantfn(self.inst, plant)) and
+		self.inst.planttarget = FindEntity(self.inst, SEE_DIST_NEW, function(plant) --main function modification
+			if ModifiedIsNearFollowPos(self, plant) and (self.validplantfn == nil or self.validplantfn(self.inst, plant)) and --modification2
 			(plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
 				return plant.components.farmplantstress and plant.components.farmplantstress.stressors.happiness == self.wantsstressed
 			end
 		end, FARMPLANT_MUSTTAGS, FARMPLANT_NOTAGS)
+	end
+
+	local function ModifiedVisit(self) --mostly copy-pasted from the original, modifying only IsNearFollowPos
+		if self.status == READY then
+			self:PickTarget()--must be PickTarget instead of ModifiedPickTarget as it is from self
+			if self.inst.planttarget then
+				local action = BufferedAction(self.inst, self.inst.planttarget, self.action, nil, nil, nil, 0.1)
+				self.inst.components.locomotor:PushAction(action, self.shouldrun)
+				self.status = RUNNING
+			else
+				self.status = FAILED
+			end
+		end
+		if self.status == RUNNING then
+			local plant = self.inst.planttarget
+			if not plant or not plant:IsValid() or not ModifiedIsNearFollowPos(self, plant) or --main function change, using ModifiedIsNearFollowPos as IsNearFollowPos is a local fn
+			not (self.validplantfn == nil or self.validplantfn(self.inst, plant)) or not (plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
+				self.inst.planttarget = nil
+				self.status = FAILED
+			--we don't need to test for the component, since we won't ever set clostest plant to anything that lacks that component --dev comment, not mine
+			elseif plant.components.farmplantstress.stressors.happiness ~= self.wantsstressed then
+				self.inst.planttarget = nil
+				self.status = SUCCESS
+			end
+		end
 	end
 
 	local index = nil
@@ -85,8 +97,8 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
             break
         end
     end
-	brain.bt.root.children[index].getfollowposfn = function(inst) return ModifiedGetFollowPos(brain.inst, brain.bt.root.children[index].inst.planttarget) end
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
+	brain.bt.root.children[index].Visit = function(self) return ModifiedVisit(self) end
 end)
 
 
