@@ -1,6 +1,8 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
 local TheSim = GLOBAL.TheSim
 local SpawnPrefab = GLOBAL.SpawnPrefab
+local FindEntity = GLOBAL.FindEntity
+local distsq = GLOBAL.distsq
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
@@ -15,14 +17,14 @@ AddPrefabPostInit("world", function(inst)
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
 	local function OnInit(inst)
 		if inst:HasTag("fruitflyfruit") then
-		--Rebind Friendly Fruit Fly
-		local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --TO FINISH
-		if fruitfly ~= nil and
-			fruitfly.components.health ~= nil and
-			not fruitfly.components.health:IsDead() and
-			fruitfly.components.follower.leader ~= inst then
-				fruitfly.components.follower:SetLeader(inst)
-		end
+			--Rebind Friendly Fruit Fly
+			local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --TO FINISH
+			if fruitfly ~= nil and
+				fruitfly.components.health ~= nil and
+				not fruitfly.components.health:IsDead() and
+				fruitfly.components.follower.leader ~= inst then
+					fruitfly.components.follower:SetLeader(inst)
+			end
 	    end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
@@ -39,7 +41,44 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-	local SEE_DIST = 100
+
+	local SEE_DIST_NEW = 40
+	local SEE_DIST = 20
+	local function ModifiedGetFollowPos(inst, plant)
+		local followpos = inst.components.follower.leader and inst.components.follower.leader:GetPosition() or inst:GetPosition()
+		if plant == nil then return followpos end
+		local plantpos = plant:GetPosition()
+		if distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW then
+			followpos.x = plantpos.x
+			followpos.z = plantpos.z
+			print("6666 followpos set to plantpos")
+		else
+			followpos.x = plantpos.x + SEE_DIST + 1
+			followpos.z = plantpos.z + SEE_DIST + 1
+			print("6666 followpos set to far from plantpos")
+		end
+		print(followpos.x)
+		print(followpos.z)
+		return followpos
+	end
+
+	local function ModifiedIsNearFollowPos(self, plant)
+		local followpos = self.getfollowposfn(self.inst)
+		local plantpos = plant:GetPosition()
+		return distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW
+	end
+
+	local FARMPLANT_MUSTTAGS = { "farmplantstress" }
+	local FARMPLANT_NOTAGS = { "farm_plant_killjoy" }
+	local function ModifiedPickTarget(self)
+		self.inst.planttarget = FindEntity(self.inst, SEE_DIST_NEW, function(plant)
+			if ModifiedIsNearFollowPos(self, plant) and (self.validplantfn == nil or self.validplantfn(self.inst, plant)) and
+			(plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
+				return plant.components.farmplantstress and plant.components.farmplantstress.stressors.happiness == self.wantsstressed
+			end
+		end, FARMPLANT_MUSTTAGS, FARMPLANT_NOTAGS)
+	end
+
 	local index = nil
     for i,v in ipairs(brain.bt.root.children) do
         if v.name == "FindFarmPlant" then
@@ -47,7 +86,12 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
             break
         end
     end
-	UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
+
+	--local planttarget = brain.bt.root.children[index].inst.planttarget --always nil for some reason
+	brain.bt.root.children[index].getfollowposfn = function(inst) return ModifiedGetFollowPos(brain.inst, brain.bt.root.children[index].inst.planttarget) end
+	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
+	--local SEE_DIST = 100
+	--UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
 end)
 
 --Prefabs.friendlyfruitfly.fn -> *FriendlyFruitFlyBrain -> OnStart -> *FindFarmPlant -> IsNearFollowPos -> SEE_DIST
