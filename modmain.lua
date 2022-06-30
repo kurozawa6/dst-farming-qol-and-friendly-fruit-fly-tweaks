@@ -16,7 +16,7 @@ local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 -- FRUIT FLY
 AddPrefabPostInit("friendlyfruitfly", function(inst)
-	if inst.components == nil or inst.components.locomotor == nil then return end
+	if inst.components.locomotor == nil then return end
 	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
 end)
 AddPrefabPostInit("world", function(inst)
@@ -91,12 +91,12 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
 	end
 
 	local index = nil
-    for i,v in ipairs(brain.bt.root.children) do
-        if v.name == "FindFarmPlant" then
-            index = i
-            break
-        end
-    end
+	for i,v in ipairs(brain.bt.root.children) do
+		if v.name == "FindFarmPlant" then
+			index = i
+			break
+		end
+	end
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
 	brain.bt.root.children[index].Visit = function(self) return ModifiedVisit(self) end
 end)
@@ -162,4 +162,13 @@ AddPrefabPostInit("world", function(inst)
 
 	local OVERSIZED_PHYSICS_RADIUS = 0.1 --default, configurable
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
+end)
+
+
+--WATERFOWL CAN
+AddPrefabPostInit("premiumwateringcan", function(inst)
+	if inst.components.fillable == nil then return end
+	inst.components.fillable.acceptsoceanwater = true
+	inst.components.burnable = nil
+	inst:RemoveTag("canlight")
 end)
