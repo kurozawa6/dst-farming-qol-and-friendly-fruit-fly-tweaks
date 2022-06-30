@@ -2,6 +2,7 @@
 local TheSim = GLOBAL.TheSim
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local FindEntity = GLOBAL.FindEntity
+local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
@@ -41,27 +42,7 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-
-	local SEE_DIST_NEW = 40
-	local SEE_DIST = 20
-	local function ModifiedGetFollowPos(inst, plant)
-		local followpos = inst.components.follower.leader and inst.components.follower.leader:GetPosition() or inst:GetPosition()
-		if plant == nil then return followpos end
-		local plantpos = plant:GetPosition()
-		if distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW then
-			followpos.x = plantpos.x
-			followpos.z = plantpos.z
-			print("6666 followpos set to plantpos")
-		else
-			followpos.x = plantpos.x + SEE_DIST + 1
-			followpos.z = plantpos.z + SEE_DIST + 1
-			print("6666 followpos set to far from plantpos")
-		end
-		print(followpos.x)
-		print(followpos.z)
-		return followpos
-	end
-
+	local SEE_DIST_NEW = 50
 	local function ModifiedIsNearFollowPos(self, plant)
 		local followpos = self.getfollowposfn(self.inst)
 		local plantpos = plant:GetPosition()
@@ -79,6 +60,31 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
 		end, FARMPLANT_MUSTTAGS, FARMPLANT_NOTAGS)
 	end
 
+	local function ModifiedVisit(self)
+		if self.status == READY then
+			self:PickTarget() --must be PickTarget instead of ModifiedPickTarget as it is from self
+			if self.inst.planttarget then
+				local action = BufferedAction(self.inst, self.inst.planttarget, self.action, nil, nil, nil, 0.1)
+				self.inst.components.locomotor:PushAction(action, self.shouldrun)
+				self.status = RUNNING
+			else
+				self.status = FAILED
+			end
+		end
+		if self.status == RUNNING then
+			local plant = self.inst.planttarget
+			if not plant or not plant:IsValid() or not ModifiedIsNearFollowPos(self, plant) or --using ModifiedIsNearFollowPos as IsNearFollowPos is a local fn
+			not (self.validplantfn == nil or self.validplantfn(self.inst, plant)) or not (plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
+				self.inst.planttarget = nil
+				self.status = FAILED
+			--we don't need to test for the component, since we won't ever set clostest plant to anything that lacks that component
+			elseif plant.components.farmplantstress.stressors.happiness ~= self.wantsstressed then
+				self.inst.planttarget = nil
+				self.status = SUCCESS
+			end
+		end
+	end
+
 	local index = nil
     for i,v in ipairs(brain.bt.root.children) do
         if v.name == "FindFarmPlant" then
@@ -86,10 +92,10 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
             break
         end
     end
-
 	--local planttarget = brain.bt.root.children[index].inst.planttarget --always nil for some reason
-	brain.bt.root.children[index].getfollowposfn = function(inst) return ModifiedGetFollowPos(brain.inst, brain.bt.root.children[index].inst.planttarget) end
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
+	brain.bt.root.children[index].Visit = function(self) return ModifiedVisit(self) end
+	
 	--local SEE_DIST = 100
 	--UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
 end)
