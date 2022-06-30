@@ -60,30 +60,30 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
 		end, FARMPLANT_MUSTTAGS, FARMPLANT_NOTAGS)
 	end
 
-	local function ModifiedVisit(self)
-		if self.status == READY then
-			self:PickTarget() --must be PickTarget instead of ModifiedPickTarget as it is from self
-			if self.inst.planttarget then
-				local action = BufferedAction(self.inst, self.inst.planttarget, self.action, nil, nil, nil, 0.1)
-				self.inst.components.locomotor:PushAction(action, self.shouldrun)
-				self.status = RUNNING
-			else
-				self.status = FAILED
-			end
-		end
-		if self.status == RUNNING then
-			local plant = self.inst.planttarget
-			if not plant or not plant:IsValid() or not ModifiedIsNearFollowPos(self, plant) or --using ModifiedIsNearFollowPos as IsNearFollowPos is a local fn
+	local function ModifiedVisit(self) print("line 63")
+		if self.status == READY then print("line 64")
+			self:PickTarget() print("line 65")--must be PickTarget instead of ModifiedPickTarget as it is from self
+			if self.inst.planttarget then print("line 66")
+				local action = BufferedAction(self.inst, self.inst.planttarget, self.action, nil, nil, nil, 0.1) print("line 67")
+				self.inst.components.locomotor:PushAction(action, self.shouldrun) print("line 68")
+				self.status = RUNNING print("line 69")
+			else print("line 70")
+				self.status = FAILED print("line 71")
+			end print("line 72")
+		end print("line 73")
+		if self.status == RUNNING then print("line 74")
+			local plant = self.inst.planttarget print("line 75")
+			print("line 76") if not plant or not plant:IsValid() or not ModifiedIsNearFollowPos(self, plant) or --using ModifiedIsNearFollowPos as IsNearFollowPos is a local fn
 			not (self.validplantfn == nil or self.validplantfn(self.inst, plant)) or not (plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
-				self.inst.planttarget = nil
-				self.status = FAILED
+				self.inst.planttarget = nil print("line 78")
+				self.status = FAILED print("line 79")
 			--we don't need to test for the component, since we won't ever set clostest plant to anything that lacks that component
-			elseif plant.components.farmplantstress.stressors.happiness ~= self.wantsstressed then
-				self.inst.planttarget = nil
-				self.status = SUCCESS
-			end
-		end
-	end
+			elseif plant.components.farmplantstress.stressors.happiness ~= self.wantsstressed then print("line 81")
+				self.inst.planttarget = nil print("line 82")
+				self.status = SUCCESS print("line 83")
+			end print("line 84")
+		end print("line 85")
+		print("line 86") end
 
 	local index = nil
     for i,v in ipairs(brain.bt.root.children) do
