@@ -4,6 +4,10 @@ local SpawnPrefab = GLOBAL.SpawnPrefab
 local FindEntity = GLOBAL.FindEntity
 local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
+local SUCCESS = GLOBAL.SUCCESS
+local FAILED = GLOBAL.FAILED
+local READY = GLOBAL.READY
+local RUNNING = GLOBAL.RUNNING
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
@@ -42,48 +46,48 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-	local SEE_DIST_NEW = 50
-	local function ModifiedIsNearFollowPos(self, plant)
+	local SEE_DIST_NEW = 30 --replaces local variable SEE_DIST from original
+	local function ModifiedIsNearFollowPos(self, plant) --a local fn from original, only SEE_DIST is changed
 		local followpos = self.getfollowposfn(self.inst)
 		local plantpos = plant:GetPosition()
-		return distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW
+		return distsq(followpos.x, followpos.z, plantpos.x, plantpos.z) < SEE_DIST_NEW * SEE_DIST_NEW --main function change
 	end
 
 	local FARMPLANT_MUSTTAGS = { "farmplantstress" }
 	local FARMPLANT_NOTAGS = { "farm_plant_killjoy" }
 	local function ModifiedPickTarget(self)
-		self.inst.planttarget = FindEntity(self.inst, SEE_DIST_NEW, function(plant)
-			if ModifiedIsNearFollowPos(self, plant) and (self.validplantfn == nil or self.validplantfn(self.inst, plant)) and
+		self.inst.planttarget = FindEntity(self.inst, SEE_DIST_NEW, function(plant) --main function modification
+			if ModifiedIsNearFollowPos(self, plant) and (self.validplantfn == nil or self.validplantfn(self.inst, plant)) and --modification2
 			(plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
 				return plant.components.farmplantstress and plant.components.farmplantstress.stressors.happiness == self.wantsstressed
 			end
 		end, FARMPLANT_MUSTTAGS, FARMPLANT_NOTAGS)
 	end
 
-	local function ModifiedVisit(self) print("line 63")
-		if self.status == READY then print("line 64")
-			self:PickTarget() print("line 65")--must be PickTarget instead of ModifiedPickTarget as it is from self
-			if self.inst.planttarget then print("line 66")
-				local action = BufferedAction(self.inst, self.inst.planttarget, self.action, nil, nil, nil, 0.1) print("line 67")
-				self.inst.components.locomotor:PushAction(action, self.shouldrun) print("line 68")
-				self.status = RUNNING print("line 69")
-			else print("line 70")
-				self.status = FAILED print("line 71")
-			end print("line 72")
-		end print("line 73")
-		if self.status == RUNNING then print("line 74")
-			local plant = self.inst.planttarget print("line 75")
-			print("line 76") if not plant or not plant:IsValid() or not ModifiedIsNearFollowPos(self, plant) or --using ModifiedIsNearFollowPos as IsNearFollowPos is a local fn
+	local function ModifiedVisit(self) --mostly copy-pasted from the original, modifying only IsNearFollowPos
+		if self.status == READY then
+			self:PickTarget()--must be PickTarget instead of ModifiedPickTarget as it is from self
+			if self.inst.planttarget then
+				local action = BufferedAction(self.inst, self.inst.planttarget, self.action, nil, nil, nil, 0.1)
+				self.inst.components.locomotor:PushAction(action, self.shouldrun)
+				self.status = RUNNING
+			else
+				self.status = FAILED
+			end
+		end
+		if self.status == RUNNING then
+			local plant = self.inst.planttarget
+			if not plant or not plant:IsValid() or not ModifiedIsNearFollowPos(self, plant) or --main function change, using ModifiedIsNearFollowPos as IsNearFollowPos is a local fn
 			not (self.validplantfn == nil or self.validplantfn(self.inst, plant)) or not (plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
-				self.inst.planttarget = nil print("line 78")
-				self.status = FAILED print("line 79")
-			--we don't need to test for the component, since we won't ever set clostest plant to anything that lacks that component
-			elseif plant.components.farmplantstress.stressors.happiness ~= self.wantsstressed then print("line 81")
-				self.inst.planttarget = nil print("line 82")
-				self.status = SUCCESS print("line 83")
-			end print("line 84")
-		end print("line 85")
-		print("line 86") end
+				self.inst.planttarget = nil
+				self.status = FAILED
+			--we don't need to test for the component, since we won't ever set clostest plant to anything that lacks that component --dev comment, not mine
+			elseif plant.components.farmplantstress.stressors.happiness ~= self.wantsstressed then
+				self.inst.planttarget = nil
+				self.status = SUCCESS
+			end
+		end
+	end
 
 	local index = nil
     for i,v in ipairs(brain.bt.root.children) do
@@ -92,16 +96,9 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
             break
         end
     end
-	--local planttarget = brain.bt.root.children[index].inst.planttarget --always nil for some reason
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
 	brain.bt.root.children[index].Visit = function(self) return ModifiedVisit(self) end
-	
-	--local SEE_DIST = 100
-	--UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
 end)
-
---Prefabs.friendlyfruitfly.fn -> *FriendlyFruitFlyBrain -> OnStart -> *FindFarmPlant -> IsNearFollowPos -> SEE_DIST
---friendlybrain
 
 
 -- FARM PLANTS
