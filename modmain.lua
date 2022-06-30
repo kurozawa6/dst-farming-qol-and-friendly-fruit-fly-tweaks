@@ -42,7 +42,7 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-	local SEE_DIST_NEW = 30
+	local SEE_DIST_NEW = 40
 	local SEE_DIST = 20
 
 	local function ModifiedGetFollowPos(inst, plant)
@@ -85,16 +85,9 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
             break
         end
     end
-	--local planttarget = brain.bt.root.children[index].inst.planttarget --always nil for some reason
 	brain.bt.root.children[index].getfollowposfn = function(inst) return ModifiedGetFollowPos(brain.inst, brain.bt.root.children[index].inst.planttarget) end
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
-	
-	--local SEE_DIST = 100
-	--UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
 end)
-
---Prefabs.friendlyfruitfly.fn -> *FriendlyFruitFlyBrain -> OnStart -> *FindFarmPlant -> IsNearFollowPos -> SEE_DIST
---friendlybrain
 
 
 -- FARM PLANTS
@@ -137,7 +130,6 @@ AddPrefabPostInit("world", function(inst)
 
 	local function SetupLoot(lootdropper)
 		local inst = lootdropper.inst
-
 		if inst:HasTag("farm_plant_killjoy") then --if rotten
 			lootdropper:SetLoot(inst.is_oversized and inst.plant_def.loot_oversized_rot or spoiled_food_loot)
 		elseif inst.components.pickable ~= nil then
