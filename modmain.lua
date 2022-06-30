@@ -3,7 +3,6 @@ local TheSim = GLOBAL.TheSim
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
-local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
