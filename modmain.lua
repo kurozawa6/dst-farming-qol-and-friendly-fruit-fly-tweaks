@@ -2,6 +2,7 @@
 local TheSim = GLOBAL.TheSim
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local FindEntity = GLOBAL.FindEntity
+local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
@@ -41,9 +42,9 @@ AddPrefabPostInit("world", function(inst)
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
-
-	local SEE_DIST_NEW = 40
+	local SEE_DIST_NEW = 30
 	local SEE_DIST = 20
+
 	local function ModifiedGetFollowPos(inst, plant)
 		local followpos = inst.components.follower.leader and inst.components.follower.leader:GetPosition() or inst:GetPosition()
 		if plant == nil then return followpos end
@@ -54,11 +55,9 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
 			print("6666 followpos set to plantpos")
 		else
 			followpos.x = plantpos.x + SEE_DIST + 1
-			followpos.z = plantpos.z + SEE_DIST + 1
+			followpos.z = plantpos.z --distance total = SEE_DIST + 1
 			print("6666 followpos set to far from plantpos")
 		end
-		print(followpos.x)
-		print(followpos.z)
 		return followpos
 	end
 
@@ -86,10 +85,10 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
             break
         end
     end
-
 	--local planttarget = brain.bt.root.children[index].inst.planttarget --always nil for some reason
 	brain.bt.root.children[index].getfollowposfn = function(inst) return ModifiedGetFollowPos(brain.inst, brain.bt.root.children[index].inst.planttarget) end
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end
+	
 	--local SEE_DIST = 100
 	--UpvalueHacker.SetUpvalue(brain.bt.root.children[index].PickTarget, SEE_DIST, "SEE_DIST")
 end)
