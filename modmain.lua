@@ -1,7 +1,9 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
 local TheSim = GLOBAL.TheSim
 local GetTime = GLOBAL.GetTime
-local FARM_PLANT_DEFENDER_SEARCH_DIST = GLOBAL.TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST
+local TUNING = GLOBAL.TUNING
+local MakeSmallBurnable = GLOBAL.MakeSmallBurnable
+local MakeSmallPropagator = GLOBAL.MakeSmallPropagator
 local FindWalkableOffset = GLOBAL.FindWalkableOffset
 local PI = GLOBAL.PI
 local SpawnPrefab = GLOBAL.SpawnPrefab
@@ -38,10 +40,53 @@ AddPrefabPostInit("friendlyfruitfly", function(inst) --stats and tweaks
 	if inst.components.locomotor == nil then return end
 	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
 end)
-AddPrefabPostInit("fruitflyfruit", function(inst)
+AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multiple ffflies
 	inst.idnum = GetTime()
+	local function OnLoseChild(inst, child) --copied local original function used for modified OnPreLoad
+		if not inst:HasTag("fruitflyfruit") then
+			return
+		end
+		inst:AddComponent("perishable")
+		inst.components.perishable:SetPerishTime(TUNING.PERISH_FAST)
+		inst:AddTag("show_spoilage")
+		inst.components.inventoryitem:ChangeImageName("fruitflyfruit_dead")
+		inst.AnimState:PlayAnimation("idle_dead")
+		inst:RemoveTag("fruitflyfruit")
+		if inst.components.inventoryitem:IsHeld() then
+			local owner = inst.components.inventoryitem.owner
+			inst.components.inventoryitem:RemoveFromOwner(true)
+			if owner.components.container ~= nil then
+				owner.components.container.ignoresound = true
+				owner.components.container:GiveItem(inst)
+				owner.components.container.ignoresound = false
+			elseif owner.components.inventory ~= nil then
+				owner.components.inventory.ignoresound = true
+				owner.components.inventory:GiveItem(inst)
+				owner.components.inventory.ignoresound = false
+			end
+		end
+		inst:AddComponent("fuel")
+		inst.components.fuel.fuelvalue = TUNING.MED_LARGE_FUEL
+		MakeSmallBurnable(inst, TUNING.SMALL_BURNTIME)
+		MakeSmallPropagator(inst)
+	end
+	local function OnPreloadFruit(inst, data)
+		if data ~= nil and data.idnum then
+			inst.idnum = data.idnum
+		end
+		if data ~= nil and data.deadchild then
+			OnLoseChild(inst)
+		end
+	end
+	local function OnSaveFruit(inst, data)
+		data.deadchild = not inst:HasTag("fruitflyfruit") or nil
+		data.idnum = inst.idnum or GetTime()
+	end
+	inst.OnPreLoad = OnPreLoadFruit
+	inst.OnSave = OnSaveFruit
+	--inst:DoTaskInTime(1, OnInitNew) --random > 1 second also possible for "twin" segragation
 end)
-AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflies
+AddPrefabPostInit("world", function(inst)
 	--local function OnInit(inst)
 	--end
 	--UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
@@ -70,23 +115,6 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 		end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
-
-	local OnLoseChild = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnLoseChild")
-	local function OnPreloadFruit(inst, data)
-		if data ~= nil and data.deadchild then
-			OnLoseChild(inst)
-		end
-		if data ~= nil and data.idnum then
-			inst.idnum = data.idnum
-		end
-	end
-	local function OnSaveFruit(inst, data)
-		data.deadchild = not inst:HasTag("fruitflyfruit") or nil
-		data.idnum = inst.idnum or GetTime()
-	end
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnPreLoadFruit, "OnPreLoad")
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnSaveFruit, "OnSave")
-	--inst:DoTaskInTime(1, OnInitNew) --random > 1 second also possible for "twin" segragation
 end)
 AddPrefabPostInit("friendlyfruitfly", function(inst) --custom functions for multiple ffflies
 	local function OnPreloadFly(inst, data)
@@ -228,7 +256,7 @@ AddPrefabPostInit("world", function(inst)
 		end
 		if not target:HasTag("plantkin") then
 			local x, y, z = inst.Transform:GetWorldPosition()
-			local defenders = TheSim:FindEntities(x, y, z, FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
+			local defenders = TheSim:FindEntities(x, y, z, TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
 			for _, defender in ipairs(defenders) do
 				if defender.components.burnable == nil or not defender.components.burnable.burning then
 					defender:PushEvent("defend_farm_plant", {source = inst, target = target})
