@@ -36,12 +36,15 @@ local function idnumToString(idnum)
 	local result = "idnum-"..(idnum or "invalid")
 	return result
 end
+local function debugginginspection(inst,viewer)
+	local str = inst.prefab.."\n".."idnum is "..(inst.idnum or "nil")
+        return str
+end
 AddPrefabPostInit("friendlyfruitfly", function(inst) --stats and tweaks
 	if inst.components.locomotor == nil then return end
 	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
 end)
-AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multiple ffflies
-	inst.idnum = GetTime()
+AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multiple ffflies	
 	local function OnLoseChild(inst, child) --copied local original function used for modified OnPreLoad
 		if not inst:HasTag("fruitflyfruit") then
 			return
@@ -70,7 +73,14 @@ AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multipl
 		MakeSmallBurnable(inst, TUNING.SMALL_BURNTIME)
 		MakeSmallPropagator(inst)
 	end
-	local function OnPreloadFruit(inst, data)
+	local function OnPreLoadFruit(inst, data)
+		print("6666 data.deadchild is being preloaded as")
+		print(data.deadchild)
+		data.deadchild = not TheSim:FindFirstEntityWithTag(idnumToString(inst.idnum))
+		--local debuggingnotice = data.deadchild and "6666 Preloaded Fruit's data.deadchild is true" or "7777 Preloaded Fruit's data.deadchild is false"
+		--print(debuggingnotice)
+		print("7777 data.deadchild is now")
+		print(data.deadchild)
 		if data ~= nil and data.idnum then
 			inst.idnum = data.idnum
 		end
@@ -82,6 +92,12 @@ AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multipl
 		data.deadchild = not inst:HasTag("fruitflyfruit") or nil
 		data.idnum = inst.idnum or GetTime()
 	end
+	inst.idnum = GetTime()
+
+	if inst.components.inspectable ~= nil then
+		inst.components.inspectable.descriptionfn = debugginginspection
+	end
+
 	inst.OnPreLoad = OnPreLoadFruit
 	inst.OnSave = OnSaveFruit
 	--inst:DoTaskInTime(1, OnInitNew) --random > 1 second also possible for "twin" segragation
@@ -115,9 +131,11 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
+
+	
 end)
 AddPrefabPostInit("friendlyfruitfly", function(inst) --custom functions for multiple ffflies
-	local function OnPreloadFly(inst, data)
+	local function OnPreLoadFly(inst, data)
 		if data ~= nil and data.idnum then
 			inst.idnum = data.idnum
 		end
@@ -127,7 +145,12 @@ AddPrefabPostInit("friendlyfruitfly", function(inst) --custom functions for mult
 		data.idnum = inst.idnum
 	end
 	inst.idnum = nil
-	inst.OnPreLoad = OnPreloadFly
+	
+	if inst.components.inspectable ~= nil then
+		inst.components.inspectable.descriptionfn = debugginginspection
+	end
+	
+	inst.OnPreLoad = OnPreLoadFly
 	inst.OnSave = OnSaveFly
 end)
 AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that attempts to add fruitfly fruit when necessary non-invasively
