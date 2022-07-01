@@ -1,4 +1,5 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
+local COLLISION = GLOBAL.COLLISION
 local GetTime = GLOBAL.GetTime
 local TheSim = GLOBAL.TheSim
 local SpawnPrefab = GLOBAL.SpawnPrefab
@@ -28,11 +29,28 @@ local function idnumToString(idnum)
 end
 --Stats and Tweaks
 AddPrefabPostInit("friendlyfruitfly", function(inst)
-	if inst.components.locomotor == nil then return end
-	inst.components.locomotor.walkspeed = GetModConfigData("fffly_speed_multiplier") * inst.components.locomotor.walkspeed
+	if GetModConfigData("fffly_unloading_disabled") then
+		inst.entity:SetCanSleep(false)
+	end
+	if GetModConfigData("fffly_collision_disabled") then
+		inst.Physics:ClearCollisionMask()
+		inst.Physics:CollidesWith(COLLISION.GROUND)
+	end
+	if GetModConfigData("fffly_blocking_disabled") then
+		inst:AddTag("NOBLOCK")
+	end
+	if GetModConfigData("fffly_muted") then
+		inst.SoundEmitter:SetMute(true)
+	end
+	if inst.components.locomotor ~= nil then
+		inst.components.locomotor.walkspeed = GetModConfigData("fffly_speed_multiplier") * inst.components.locomotor.walkspeed
+	end
+	if GetModConfigData("fffly_regen_enabled") and inst.components.health ~= nil then
+		inst.components.health:StartRegen(1,1)
+	end
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain) --modifies fffly's tending radius
-	local SEE_DIST_NEW = GetModConfigData("fffly_range") --replaces local variable SEE_DIST from original
+	local SEE_DIST_NEW = 20 * GetModConfigData("fffly_range") --replaces local variable SEE_DIST from original
 	local function ModifiedIsNearFollowPos(self, plant) --a local fn from original, only SEE_DIST is changed
 		local followpos = self.getfollowposfn(self.inst)
 		local plantpos = plant:GetPosition()

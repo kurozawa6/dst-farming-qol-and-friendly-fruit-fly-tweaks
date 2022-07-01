@@ -42,7 +42,7 @@ configuration_options =
 		default = false,
 	},
     {
-        name = "fffly_wont_unload", --TO USE @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        name = "fffly_unloading_disabled",
         label = "Disable Unloading",
         hover = "Makes Friendly Fruit Flies able to work even when you're away or in caves!",
         options =
@@ -52,19 +52,6 @@ configuration_options =
         },
         default = true,
     },
-    {
-		name = "fffly_speed_multiplier",
-		label = "Speed",
-		hover = "Makes Friendly Fruit Fly fly faster",
-		options =
-		{
-			{description = "1x", data = 1},
-			{description = "2x", data = 2},
-            {description = "3x", data = 3},
-            {description = "4x", data = 4},
-		},
-		default = 2,
-	},
     {
 		name = "fffly_range",
 		label = "Crop Tending Range",
@@ -79,6 +66,19 @@ configuration_options =
             {description = "5x", data = 5},
 		},
 		default = 1.5,
+	},
+    {
+		name = "fffly_speed_multiplier",
+		label = "Speed",
+		hover = "Makes Friendly Fruit Fly fly faster",
+		options =
+		{
+			{description = "1x", data = 1},
+			{description = "2x", data = 2},
+            {description = "3x", data = 3},
+            {description = "4x", data = 4},
+		},
+		default = 2,
 	},
     {
 		name = "fffly_number_limit",
@@ -107,8 +107,52 @@ configuration_options =
             {description = "19", data = 19},
             {description = "20", data = 20},
 		},
-		default = 6,
+		default = 1,
 	},
+    {
+        name = "fffly_collision_disabled",
+        label = "Disable Collision",
+        hover = "Removes Friendly Fruit Flies' Collision.\nYes is strongly recommended if you have many friendly fruit flies.",
+        options =
+        {
+            {description = "No", data = false},
+			{description = "Yes", data = true},
+        },
+        default = false,
+    },
+    {
+        name = "fffly_blocking_disabled",
+        label = "Disable Placement Blocking",
+        hover = "Disables Friendly Fruit Flies' Till/Plant Blocking when on the way.\nYes recommended when collision is Disabled. Else, you can't push 'em!.",
+        options =
+        {
+            {description = "No", data = false},
+			{description = "Yes", data = true},
+        },
+        default = false,
+    },
+    {
+        name = "fffly_regen_enabled",
+        label = "Enable Health Regen",
+        hover = "Gives Friendly Fruit Flies 1HP/second regen :)",
+        options =
+        {
+            {description = "No", data = false},
+			{description = "Yes", data = true},
+        },
+        default = false,
+    },
+    {
+        name = "fffly_muted",
+        label = "Mute Friendly Fruit Fly",
+        hover = "Disables Friendly Fruit Flies' sounds :(",
+        options =
+        {
+            {description = "No", data = false},
+			{description = "Yes", data = true},
+        },
+        default = false,
+    },
     {
 		name = "banner2",
 		label = "Waterfowl Can",
@@ -158,7 +202,7 @@ configuration_options =
 	},
     {
 		name = "stable_giant_crops",
-		label = "Don't Fly When Picked",
+		label = "Giants Don't Fly When Picked",
 		hover = "Makes Giant Crops stay on the same spot when you pick them.",
 		options =
 		{
@@ -170,11 +214,11 @@ configuration_options =
     {
 		name = "giant_crop_collision_size",
 		label = "Giant Crop Collision Size",
-		hover = "Changes picked Giant Crops collision size",
+		hover = "Changes picked Giant Crops collision size.\nWarning: This feature is not yet thoroughly bug tested!",
 		options =
 		{
 			{description = "Original", data = 0.1},
-            {description = "Smaller", data = -1},
+            {description = "Smaller", data = -2},
 			{description = "No Collision", data = -6},
 		},
 		default = 0.1,
