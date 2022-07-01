@@ -1,5 +1,6 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
 local TheSim = GLOBAL.TheSim
+local LootTables = GLOBAL.LootTables
 local SpawnPrefab = GLOBAL.SpawnPrefab
 local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
@@ -11,13 +12,58 @@ local READY = GLOBAL.READY
 local RUNNING = GLOBAL.RUNNING
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
+local Ents = GLOBAL.Ents
+local function countprefabs(prefab)
+	local count = 0
+	for k,v in pairs(Ents) do
+		if v.prefab == prefab then count = count + 1 end
+	end
+	return count
+end
+
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
 
 
 -- FRUIT FLY
-AddPrefabPostInit("friendlyfruitfly", function(inst)
+AddPrefabPostInit("friendlyfruitfly", function(inst) --stats and tweaks
 	if inst.components.locomotor == nil then return end
 	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
+end)
+AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multiple ffflies
+end)
+AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that attempts to add fruitfly fruit when necessary non-invasively
+	if inst.components.lootdropper == nil then return end
+	local function inLootTable(table, element)
+		for k,v in pairs(table) do
+			if v["prefab"] == element or v[1] == element then return true end
+		end
+		return false
+	end
+	local function getSharedLootTableIndex(table)
+		local index = nil
+		for k,v in pairs(table) do
+			if v[1] == "fruitflyfruit" then index = k break end
+		end
+		return index
+	end
+	if inst.components.lootdropper.chanceloot == nil then return end
+	local sharedLootTable = LootTables[inst.components.lootdropper.chanceloottable]
+	if countprefabs("friendlyfruitfly") >= 6 then --FFFLY limiter BETA
+		if inLootTable(sharedLootTable, "fruitflyfruit") then
+			local index = getSharedLootTableIndex(sharedLootTable)
+			table.remove(sharedLootTable, index)
+		end
+		return
+	end --limit modifier beta
+	local chanceLootTable = inst.components.lootdropper.chanceloot
+	if not inLootTable(chanceLootTable, "fruitflyfruit") and not inLootTable(sharedLootTable, "fruitflyfruit") then
+		--print("7777 FALSE AND FALSE DETECTED, WILL ATTEMPT TO ADD ONE") --debugging
+		table.insert(sharedLootTable, {"fruitflyfruit", 1.0 })
+	elseif inLootTable(chanceLootTable, "fruitflyfruit") and inLootTable(sharedLootTable, "fruitflyfruit") then
+		local index = getSharedLootTableIndex(sharedLootTable)
+		--print("6666 TRUE AND TRUE DETECTED, WILL ATTEMPT TO REMOVE ONE") -debugging
+		table.remove(sharedLootTable, index)
+	end
 end)
 AddPrefabPostInit("world", function(inst)
 	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
@@ -34,17 +80,6 @@ AddPrefabPostInit("world", function(inst)
 	    end
 	end
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
-
-	local pickseed = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, "LordLootSetupFunction", "pickseed") --to be replaced with addchanceloot w/o hack
-	local function LordLootSetupFunction(lootdropper)
-		lootdropper.chanceloot = nil
-		lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
-		for i = 1, 4 do
-			lootdropper:AddChanceLoot(pickseed(), 1.0)
-			lootdropper:AddChanceLoot(pickseed(), 0.25)
-		end
-	end
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.lordfruitfly.fn, LordLootSetupFunction, "LordLootSetupFunction")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
 	local SEE_DIST_NEW = 30 --replaces local variable SEE_DIST from original
@@ -56,7 +91,7 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
 
 	local FARMPLANT_MUSTTAGS = { "farmplantstress" }
 	local FARMPLANT_NOTAGS = { "farm_plant_killjoy" }
-	local function ModifiedPickTarget(self)
+	local function ModifiedPickTarget(self) --important picktarget function to modify
 		self.inst.planttarget = FindEntity(self.inst, SEE_DIST_NEW, function(plant) --main function modification
 			if ModifiedIsNearFollowPos(self, plant) and (self.validplantfn == nil or self.validplantfn(self.inst, plant)) and --modification2
 			(plant.components.growable == nil or plant.components.growable:GetCurrentStageData().tendable) then
@@ -114,7 +149,7 @@ AddPrefabPostInitAny(function(inst)
 	--inst.components.pickable.droppicked = true --experiment, picksound doesn't work when on
 end)
 AddPrefabPostInit("world", function(inst)
-	local function SpawnPseudoCropLoot(inst) --function to spawnprefab a pseudo loot from loot source location
+	local function SpawnPseudoCropLoot(inst) --important function to spawnprefab a pseudo loot from loot source location
 		local pseudoloot = SpawnPrefab(inst.plant_def.product_oversized)
 		if pseudoloot ~= nil then
 			pseudoloot.Transform:SetPosition(inst.Transform:GetWorldPosition())
@@ -125,7 +160,7 @@ AddPrefabPostInit("world", function(inst)
 	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
 		if inst.is_oversized then
 			SpawnPseudoCropLoot(inst) --pseudo-loot, main function change
-			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound, sound can't be made from empty loot
+			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound?, sound can't be made from empty loot
 		end
 		if not target:HasTag("plantkin") then
 			local x, y, z = inst.Transform:GetWorldPosition()
@@ -169,6 +204,6 @@ end)
 AddPrefabPostInit("premiumwateringcan", function(inst)
 	if inst.components.fillable == nil then return end
 	inst.components.fillable.acceptsoceanwater = true
-	inst.components.burnable = nil
-	inst:RemoveTag("canlight")
+	inst.components.burnable = nil --makes it non-flammable
+	inst:RemoveTag("canlight") --removes "Light" action text when hovered by mouse
 end)
