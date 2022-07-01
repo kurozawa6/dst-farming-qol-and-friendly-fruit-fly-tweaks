@@ -72,7 +72,7 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
 
 	local OnLoseChild = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnLoseChild")
-	local function OnPreloadFruit(inst, data)
+	local function OnPreLoadFruit(inst, data)
 		if data ~= nil and data.deadchild then
 			OnLoseChild(inst)
 		end
@@ -89,7 +89,7 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 	--inst:DoTaskInTime(1, OnInitNew) --random > 1 second also possible for "twin" segragation
 end)
 AddPrefabPostInit("friendlyfruitfly", function(inst) --custom functions for multiple ffflies
-	local function OnPreloadFly(inst, data)
+	local function OnPreLoadFly(inst, data)
 		if data ~= nil and data.idnum then
 			inst.idnum = data.idnum
 		end
@@ -99,7 +99,7 @@ AddPrefabPostInit("friendlyfruitfly", function(inst) --custom functions for mult
 		data.idnum = inst.idnum
 	end
 	inst.idnum = nil
-	inst.OnPreLoad = OnPreloadFly
+	inst.OnPreLoad = OnPreLoadFly
 	inst.OnSave = OnSaveFly
 end)
 AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that attempts to add fruitfly fruit when necessary non-invasively
