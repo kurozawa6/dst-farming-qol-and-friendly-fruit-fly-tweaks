@@ -1,7 +1,12 @@
 --if not GLOBAL.TheNet:GetIsServer() then return end
 local TheSim = GLOBAL.TheSim
-local LootTables = GLOBAL.LootTables
+local GetTime = GLOBAL.GetTime
+local FARM_PLANT_DEFENDER_SEARCH_DIST = GLOBAL.TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST
+local FindWalkableOffset = GLOBAL.FindWalkableOffset
+local PI = GLOBAL.PI
 local SpawnPrefab = GLOBAL.SpawnPrefab
+local Vector3 = GLOBAL.Vector3
+local LootTables = GLOBAL.LootTables
 local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
 local BufferedAction = GLOBAL.BufferedAction
@@ -25,11 +30,77 @@ end
 
 
 -- FRUIT FLY
+local function idnumToString(idnum)
+	local result = "idnum-"..(idnum or "invalid")
+	return result
+end
 AddPrefabPostInit("friendlyfruitfly", function(inst) --stats and tweaks
 	if inst.components.locomotor == nil then return end
 	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
 end)
-AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multiple ffflies
+AddPrefabPostInit("fruitflyfruit", function(inst)
+	inst.idnum = GetTime()
+end)
+AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflies
+	--local function OnInit(inst)
+	--end
+	--UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
+	local function SpawnFriendlyFruitFly(inst, idnum)
+		local x, y, z = inst.Transform:GetWorldPosition()
+		local offset = FindWalkableOffset(Vector3(x, y, z), math.random() * 2 * PI, 35, 12, true)
+		local fruitfly = SpawnPrefab("friendlyfruitfly")
+		if fruitfly ~= nil then
+			fruitfly.Physics:Teleport(offset ~= nil and offset.x + x or x, 0, offset ~= nil and offset.z + z or z)
+			fruitfly:FacePoint(x, y, z)
+			fruitfly.idnum = idnum
+			fruitfly:AddTag(idnumToString(idnum))
+			return fruitfly
+		end
+	end
+	local function OnInit(inst)
+		if inst:HasTag("fruitflyfruit") then
+			--Rebind Friendly Fruit Fly --dev comment
+			local fruitfly = TheSim:FindFirstEntityWithTag(idnumToString(inst.idnum)) or SpawnFriendlyFruitFly(inst, inst.idnum)
+			if fruitfly ~= nil and
+				fruitfly.components.health ~= nil and
+				not fruitfly.components.health:IsDead() and
+				fruitfly.components.follower.leader ~= inst then
+					fruitfly.components.follower:SetLeader(inst)
+			end
+		end
+	end
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
+
+	local OnLoseChild = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnLoseChild")
+	local function OnPreloadFruit(inst, data)
+		if data ~= nil and data.deadchild then
+			OnLoseChild(inst)
+		end
+		if data ~= nil and data.idnum then
+			inst.idnum = data.idnum
+		end
+	end
+	local function OnSaveFruit(inst, data)
+		data.deadchild = not inst:HasTag("fruitflyfruit") or nil
+		data.idnum = inst.idnum or GetTime()
+	end
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnPreLoadFruit, "OnPreLoad")
+	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnSaveFruit, "OnSave")
+	--inst:DoTaskInTime(1, OnInitNew) --random > 1 second also possible for "twin" segragation
+end)
+AddPrefabPostInit("friendlyfruitfly", function(inst) --custom functions for multiple ffflies
+	local function OnPreloadFly(inst, data)
+		if data ~= nil and data.idnum then
+			inst.idnum = data.idnum
+		end
+		inst:AddTag(idnumToString(inst.idnum))
+	end
+	local function OnSaveFly(inst, data)
+		data.idnum = inst.idnum
+	end
+	inst.idnum = nil
+	inst.OnPreLoad = OnPreloadFly
+	inst.OnSave = OnSaveFly
 end)
 AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that attempts to add fruitfly fruit when necessary non-invasively
 	if inst.components.lootdropper == nil then return end
@@ -48,7 +119,7 @@ AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that at
 	end
 	if inst.components.lootdropper.chanceloot == nil then return end
 	local sharedLootTable = LootTables[inst.components.lootdropper.chanceloottable]
-	if countprefabs("friendlyfruitfly") >= 6 then --FFFLY limiter BETA
+	if countprefabs("friendlyfruitfly") >= 6 then --this limits fruit fly fruit loots based on a number
 		if inLootTable(sharedLootTable, "fruitflyfruit") then
 			local index = getSharedLootTableIndex(sharedLootTable)
 			table.remove(sharedLootTable, index)
@@ -64,22 +135,6 @@ AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that at
 		--print("6666 TRUE AND TRUE DETECTED, WILL ATTEMPT TO REMOVE ONE") -debugging
 		table.remove(sharedLootTable, index)
 	end
-end)
-AddPrefabPostInit("world", function(inst)
-	local SpawnFriendlyFruitFly = UpvalueHacker.GetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, "OnInit", "SpawnFriendlyFruitFly")
-	local function OnInit(inst)
-		if inst:HasTag("fruitflyfruit") then
-			--Rebind Friendly Fruit Fly
-			local fruitfly = TheSim:FindFirstEntityWithTag("friendlyfruitfly") or SpawnFriendlyFruitFly(inst) --TO FINISH
-			if fruitfly ~= nil and
-				fruitfly.components.health ~= nil and
-				not fruitfly.components.health:IsDead() and
-				fruitfly.components.follower.leader ~= inst then
-					fruitfly.components.follower:SetLeader(inst)
-			end
-	    end
-	end
-	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain)
 	local SEE_DIST_NEW = 30 --replaces local variable SEE_DIST from original
@@ -137,8 +192,17 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain)
 end)
 
 
+--WATERFOWL CAN
+AddPrefabPostInit("premiumwateringcan", function(inst)
+	if inst.components.fillable == nil then return end
+	inst.components.fillable.acceptsoceanwater = true
+	inst.components.burnable = nil --makes it non-flammable
+	inst:RemoveTag("canlight") --removes "Light" action text when hovered by mouse
+end)
+
+
 -- FARM PLANTS
-AddPrefabPostInitAny(function(inst)
+AddPrefabPostInitAny(function(inst) --hammerless harvest
 	if not (inst:HasTag("oversized_veggie") and inst:HasTag("waxable")) then return end
 	if inst.components == nil then return end
 	inst:AddComponent("pickable")
@@ -164,7 +228,7 @@ AddPrefabPostInit("world", function(inst)
 		end
 		if not target:HasTag("plantkin") then
 			local x, y, z = inst.Transform:GetWorldPosition()
-			local defenders = TheSim:FindEntities(x, y, z, TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
+			local defenders = TheSim:FindEntities(x, y, z, FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
 			for _, defender in ipairs(defenders) do
 				if defender.components.burnable == nil or not defender.components.burnable.burning then
 					defender:PushEvent("defend_farm_plant", {source = inst, target = target})
@@ -197,13 +261,4 @@ AddPrefabPostInit("world", function(inst)
 
 	local OVERSIZED_PHYSICS_RADIUS = 0.1 --default, configurable
 	UpvalueHacker.SetUpvalue(GLOBAL.Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
-end)
-
-
---WATERFOWL CAN
-AddPrefabPostInit("premiumwateringcan", function(inst)
-	if inst.components.fillable == nil then return end
-	inst.components.fillable.acceptsoceanwater = true
-	inst.components.burnable = nil --makes it non-flammable
-	inst:RemoveTag("canlight") --removes "Light" action text when hovered by mouse
 end)
