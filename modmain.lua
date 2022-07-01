@@ -12,6 +12,15 @@ local READY = GLOBAL.READY
 local RUNNING = GLOBAL.RUNNING
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
+local Ents = GLOBAL.Ents
+local function countprefabs(prefab)
+	local count = 0
+	for k,v in pairs(Ents) do
+		if v.prefab == prefab then count = count + 1 end
+	end
+	return count
+end
+
 --AddPrefabPostInit -> if not nil and not in table then inst.components.lootdropper:AddChanceLoot("fruitflyfruit", 1.0)
 
 
@@ -19,6 +28,8 @@ local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 AddPrefabPostInit("friendlyfruitfly", function(inst) --stats and tweaks
 	if inst.components.locomotor == nil then return end
 	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
+end)
+AddPrefabPostInit("fruitflyfruit", function(inst) --custom functions for multiple ffflies
 end)
 AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that attempts to add fruitfly fruit when necessary non-invasively
 	if inst.components.lootdropper == nil then return end
@@ -28,17 +39,28 @@ AddPrefabPostInit("lordfruitfly", function(inst) --below is the function that at
 		end
 		return false
 	end
+	local function getSharedLootTableIndex(table)
+		local index = nil
+		for k,v in pairs(table) do
+			if v[1] == "fruitflyfruit" then index = k break end
+		end
+		return index
+	end
 	if inst.components.lootdropper.chanceloot == nil then return end
-	local chanceLootTable = inst.components.lootdropper.chanceloot
 	local sharedLootTable = LootTables[inst.components.lootdropper.chanceloottable]
+	if countprefabs("friendlyfruitfly") >= 6 then --FFFLY limiter BETA
+		if inLootTable(sharedLootTable, "fruitflyfruit") then
+			local index = getSharedLootTableIndex(sharedLootTable)
+			table.remove(sharedLootTable, index)
+		end
+		return
+	end --limit modifier beta
+	local chanceLootTable = inst.components.lootdropper.chanceloot
 	if not inLootTable(chanceLootTable, "fruitflyfruit") and not inLootTable(sharedLootTable, "fruitflyfruit") then
 		--print("7777 FALSE AND FALSE DETECTED, WILL ATTEMPT TO ADD ONE") --debugging
 		table.insert(sharedLootTable, {"fruitflyfruit", 1.0 })
 	elseif inLootTable(chanceLootTable, "fruitflyfruit") and inLootTable(sharedLootTable, "fruitflyfruit") then
-		local index = nil
-		for k,v in pairs(sharedLootTable) do
-			if v[1] == "fruitflyfruit" then index = k break end
-		end
+		local index = getSharedLootTableIndex(sharedLootTable)
 		--print("6666 TRUE AND TRUE DETECTED, WILL ATTEMPT TO REMOVE ONE") -debugging
 		table.remove(sharedLootTable, index)
 	end
