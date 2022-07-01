@@ -17,6 +17,7 @@ local SUCCESS = GLOBAL.SUCCESS
 local FAILED = GLOBAL.FAILED
 local READY = GLOBAL.READY
 local RUNNING = GLOBAL.RUNNING
+local ACTIONS = GLOBAL.ACTIONS
 local UpvalueHacker = GLOBAL.require("tools/upvaluehacker")
 
 
@@ -193,16 +194,11 @@ end)
 
 
 -- FARM PLANTS
---Hammerless Harvest
-AddPrefabPostInitAny(function(inst) 
-	if not (inst:HasTag("oversized_veggie") and inst:HasTag("waxable")) then return end
-	if inst.components == nil then return end
-	inst:AddComponent("pickable")
-	inst.components.pickable.remove_when_picked = true
-	inst.components.pickable:SetUp(nil)
-	inst.components.pickable.use_lootdropper_for_product = true
-	inst.components.pickable.picksound = "dontstarve/wilson/harvest_berries"
-	--inst.components.pickable.droppicked = true --experiment, picksound doesn't work when on
+--Fast Crop Seed Planting
+AddStategraphPostInit("wilson", function(inst)
+	if ACTIONS.PLANTSOIL == nil then return end
+	if inst.actionshandlers[ACTIONS.PLANTSOIL].deststate == nil then return end
+	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function(inst, action) return "doshortaction" end
 end)
 --Giant Crops Don't Fly When Picked
 AddPrefabPostInit("world", function(inst)
@@ -230,6 +226,7 @@ AddPrefabPostInit("world", function(inst)
 			end
 		end
 	end
+	local spoiled_food_loot = {"spoiled_food"} --defined as such from the original at the time of coding
 	UpvalueHacker.SetUpvalue(Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
 	local function SetupLoot(lootdropper)
 		local inst = lootdropper.inst
@@ -237,7 +234,6 @@ AddPrefabPostInit("world", function(inst)
 			lootdropper:SetLoot(inst.is_oversized and inst.plant_def.loot_oversized_rot or spoiled_food_loot)
 		elseif inst.components.pickable ~= nil then
 			local plant_stress = inst.components.farmplantstress ~= nil and inst.components.farmplantstress:GetFinalStressState() or FARM_PLANT_STRESS.HIGH
-
 			if inst.is_oversized then
 				lootdropper:SetLoot({}) --old loot replaced by above SpawnPrefab, main function change
 			elseif plant_stress == FARM_PLANT_STRESS.LOW or plant_stress == FARM_PLANT_STRESS.NONE then
@@ -253,4 +249,15 @@ AddPrefabPostInit("world", function(inst)
 --Giant Crop Obstacle Radius
 	local OVERSIZED_PHYSICS_RADIUS = 0.1 --default, configurable
 	UpvalueHacker.SetUpvalue(Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
+end)
+--Hammerless Harvest
+AddPrefabPostInitAny(function(inst) 
+	if not (inst:HasTag("oversized_veggie") and inst:HasTag("waxable")) then return end
+	if inst.components == nil then return end
+	inst:AddComponent("pickable")
+	inst.components.pickable.remove_when_picked = true
+	inst.components.pickable:SetUp(nil)
+	inst.components.pickable.use_lootdropper_for_product = true
+	inst.components.pickable.picksound = "dontstarve/wilson/harvest_berries"
+	--inst.components.pickable.droppicked = true --experiment, picksound doesn't work when on
 end)
