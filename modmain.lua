@@ -166,7 +166,7 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 		data.idnum = inst.idnum or GetTime()
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnPreLoadFruit, "OnPreLoad")
-	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnSaveFruit, "OnSave") --might be affecting other fruitfly's OnSave too, potential bugs?
+	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnSaveFruit, "OnSave")
 end)
 AddPrefabPostInit("friendlyfruitfly", function(inst) --modifies OnPreLoad and OnSave functions of fffly
 	local function OnPreLoadFly(inst, data)
@@ -197,7 +197,7 @@ end)
 --Fast Crop Seed Planting
 AddStategraphPostInit("wilson", function(inst)
 	if ACTIONS.PLANTSOIL == nil then return end
-	if inst.actionshandlers[ACTIONS.PLANTSOIL].deststate == nil then return end
+	if inst.actionhandlers[ACTIONS.PLANTSOIL].deststate == nil then return end
 	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function(inst, action) return "doshortaction" end
 end)
 --Giant Crops Don't Fly When Picked
