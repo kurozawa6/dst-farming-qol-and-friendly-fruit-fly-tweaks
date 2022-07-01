@@ -29,10 +29,10 @@ end
 --Stats and Tweaks
 AddPrefabPostInit("friendlyfruitfly", function(inst)
 	if inst.components.locomotor == nil then return end
-	inst.components.locomotor.walkspeed = 2 * inst.components.locomotor.walkspeed
+	inst.components.locomotor.walkspeed = GetModConfigData("fffly_speed_multiplier") * inst.components.locomotor.walkspeed
 end)
 AddBrainPostInit("friendlyfruitflybrain", function(brain) --modifies fffly's tending radius
-	local SEE_DIST_NEW = 30 --replaces local variable SEE_DIST from original
+	local SEE_DIST_NEW = GetModConfigData("fffly_range") --replaces local variable SEE_DIST from original
 	local function ModifiedIsNearFollowPos(self, plant) --a local fn from original, only SEE_DIST is changed
 		local followpos = self.getfollowposfn(self.inst)
 		local plantpos = plant:GetPosition()
@@ -82,7 +82,7 @@ AddBrainPostInit("friendlyfruitflybrain", function(brain) --modifies fffly's ten
 	brain.bt.root.children[index].PickTarget = function(self) return ModifiedPickTarget(self) end --applies changes on instance's FindFarmPlant functions
 	brain.bt.root.children[index].Visit = function(self) return ModifiedVisit(self) end
 end)
---More FFFlies
+--More FFFlies prerequisites
 local function countprefabs(prefab)
 	local count = 0
 	for k,v in pairs(Ents) do
@@ -107,8 +107,8 @@ AddPrefabPostInit("lordfruitfly", function(inst) --functions that attempt to add
 	end
 	if inst.components.lootdropper.chanceloot == nil then return end
 	local sharedLootTable = LootTables[inst.components.lootdropper.chanceloottable]
---Fruit Fly Fruit Limit
-	if countprefabs("friendlyfruitfly") >= 6 then --this limits fruit fly fruit loots based on a number
+--Fruit Fly Fruit Loot Limiter based on Friendly Fruit Fly Prefab Count
+	if countprefabs("friendlyfruitfly") >= GetModConfigData("fffly_number_limit") then --this limits fruit fly fruit loots based on a number
 		if inLootTable(sharedLootTable, "fruitflyfruit") then
 			local index = getSharedLootTableIndex(sharedLootTable)
 			table.remove(sharedLootTable, index)
@@ -186,22 +186,31 @@ end)
 
 -- WATERFOWL CAN
 AddPrefabPostInit("premiumwateringcan", function(inst)
-	if inst.components.fillable == nil then return end
-	inst.components.fillable.acceptsoceanwater = true
-	inst.components.burnable = nil --makes it non-flammable
-	inst:RemoveTag("canlight") --removes "Light" action text when hovered by mouse
+	if GetModConfigData("can_ocean_refill_wf") and inst.components.fillable ~= nil then
+		inst.components.fillable.acceptsoceanwater = true
+	end
+	if GetModConfigData("cannot_burn_wf") and inst.components.burnable then
+		inst.components.burnable = nil --makes it non-flammable
+		inst:RemoveTag("canlight") --removes "Light" action text when hovered by mouse
+	end
 end)
 
 
 -- FARM PLANTS
 --Fast Crop Seed Planting
 AddStategraphPostInit("wilson", function(inst)
-	if ACTIONS.PLANTSOIL == nil then return end
+	if not GetModConfigData("fast_planting") or ACTIONS.PLANTSOIL == nil then return end
 	if inst.actionhandlers[ACTIONS.PLANTSOIL].deststate == nil then return end
 	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function(inst, action) return "doshortaction" end
 end)
---Giant Crops Don't Fly When Picked
 AddPrefabPostInit("world", function(inst)
+--Giant Crop Obstacle Radius
+	local OVERSIZED_PHYSICS_RADIUS = GetModConfigData("giant_crop_collision_size")
+	UpvalueHacker.SetUpvalue(Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
+--Giant Crops Don't Fly Around When Picked
+	if GetModConfigData("stable_giant_crops") == false then
+		return
+	end
 	local function SpawnPseudoCropLoot(inst) --important function to spawnprefab a pseudo loot from loot source location
 		local pseudoloot = SpawnPrefab(inst.plant_def.product_oversized)
 		if pseudoloot ~= nil then
@@ -246,12 +255,10 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.farm_plant_potato.fn, SetupLoot, "SetupLoot")
---Giant Crop Obstacle Radius
-	local OVERSIZED_PHYSICS_RADIUS = 0.1 --default, configurable
-	UpvalueHacker.SetUpvalue(Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
 end)
 --Hammerless Harvest
-AddPrefabPostInitAny(function(inst) 
+AddPrefabPostInitAny(function(inst)
+	if not GetModConfigData("hammerless_harvest") then return end
 	if not (inst:HasTag("oversized_veggie") and inst:HasTag("waxable")) then return end
 	if inst.components == nil then return end
 	inst:AddComponent("pickable")
