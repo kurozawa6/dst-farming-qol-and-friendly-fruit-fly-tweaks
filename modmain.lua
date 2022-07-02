@@ -207,7 +207,7 @@ AddPrefabPostInit("premiumwateringcan", function(inst)
 	if GetModConfigData("can_ocean_refill_wf") and inst.components.fillable ~= nil then
 		inst.components.fillable.acceptsoceanwater = true
 	end
-	if GetModConfigData("cannot_burn_wf") and inst.components.burnable then
+	if GetModConfigData("cannot_burn_wf") and inst.components.burnable ~= nil then
 		inst.components.burnable = nil --makes it non-flammable
 		inst:RemoveTag("canlight") --removes "Light" action text when hovered by mouse
 	end
