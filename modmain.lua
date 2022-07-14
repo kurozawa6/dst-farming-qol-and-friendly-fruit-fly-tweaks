@@ -9,7 +9,7 @@ local LootTables = GLOBAL.LootTables
 local FindWalkableOffset = GLOBAL.FindWalkableOffset
 local PI = GLOBAL.PI
 local Vector3 = GLOBAL.Vector3
-local TUNING = GLOBAL.TUNING
+--local TUNING = GLOBAL.TUNING
 local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
 local BufferedAction = GLOBAL.BufferedAction
@@ -237,24 +237,16 @@ AddPrefabPostInit("world", function(inst)
 			--return pseudoloot
 		end
 	end
-	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
+	local orig_call_for_reinforcements = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "dig_up", "call_for_reinforcements")
+	local function call_for_reinforcements(inst, target, ...) --the only function I found reachable by upvalue hack
 		if inst.is_oversized then
 			SpawnPseudoCropLoot(inst) --pseudo-loot, main function change
 			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound?, sound can't be made from empty loot
 		end
-		if not target:HasTag("plantkin") then
-			local x, y, z = inst.Transform:GetWorldPosition()
-			local defenders = TheSim:FindEntities(x, y, z, TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
-			for _, defender in ipairs(defenders) do
-				if defender.components.burnable == nil or not defender.components.burnable.burning then
-					defender:PushEvent("defend_farm_plant", {source = inst, target = target})
-					break
-				end
-			end
-		end
+		return orig_call_for_reinforcements(inst, target, ...)
 	end
-	local spoiled_food_loot = {"spoiled_food"} --defined as such from the original at the time of coding
 	UpvalueHacker.SetUpvalue(Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
+	local spoiled_food_loot = {"spoiled_food"} --defined as such from the original at the time of coding
 	local function SetupLoot(lootdropper)
 		local inst = lootdropper.inst
 		if inst:HasTag("farm_plant_killjoy") then --if rotten
