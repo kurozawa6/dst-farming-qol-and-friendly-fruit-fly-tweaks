@@ -9,8 +9,6 @@ local LootTables = GLOBAL.LootTables
 local FindWalkableOffset = GLOBAL.FindWalkableOffset
 local PI = GLOBAL.PI
 local Vector3 = GLOBAL.Vector3
---local TUNING = GLOBAL.TUNING
---local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
 local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
@@ -237,17 +235,17 @@ AddPrefabPostInit("world", function(inst)
 		end
 	end
 	local orig_call_for_reinforcements = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "dig_up", "call_for_reinforcements")
-	local function call_for_reinforcements(inst, target, ...) --the only function I found reachable by upvalue hack
+	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
 		if inst.is_oversized then
 			SpawnPseudoCropLoot(inst) --pseudo-loot, main function change
 			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound?, sound can't be made from empty loot
 		end
-		return orig_call_for_reinforcements(inst, target, ...)
+		return orig_call_for_reinforcements(inst, target)
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
 	local orig_SetupLoot = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "SetupLoot")
-	local function SetupLoot(lootdropper, ...)
-		orig_SetupLoot(lootdropper, ...)
+	local function SetupLoot(lootdropper)
+		orig_SetupLoot(lootdropper)
 		local inst = lootdropper.inst
 		if not inst:HasTag("farm_plant_killjoy") and inst.components.pickable ~= nil then
 			if inst.is_oversized then
