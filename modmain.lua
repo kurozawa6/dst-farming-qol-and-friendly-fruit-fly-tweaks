@@ -10,7 +10,7 @@ local FindWalkableOffset = GLOBAL.FindWalkableOffset
 local PI = GLOBAL.PI
 local Vector3 = GLOBAL.Vector3
 --local TUNING = GLOBAL.TUNING
-local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
+--local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
 local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
@@ -246,21 +246,13 @@ AddPrefabPostInit("world", function(inst)
 		return orig_call_for_reinforcements(inst, target, ...)
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
-	local spoiled_food_loot = {"spoiled_food"} --defined as such from the original at the time of coding
-	local function SetupLoot(lootdropper)
+	local orig_SetupLoot = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "SetupLoot")
+	local function SetupLoot(lootdropper, ...)
+		orig_SetupLoot(lootdropper, ...)
 		local inst = lootdropper.inst
-		if inst:HasTag("farm_plant_killjoy") then --if rotten
-			lootdropper:SetLoot(inst.is_oversized and inst.plant_def.loot_oversized_rot or spoiled_food_loot)
-		elseif inst.components.pickable ~= nil then
-			local plant_stress = inst.components.farmplantstress ~= nil and inst.components.farmplantstress:GetFinalStressState() or FARM_PLANT_STRESS.HIGH
+		if not inst:HasTag("farm_plant_killjoy") and inst.components.pickable ~= nil then
 			if inst.is_oversized then
 				lootdropper:SetLoot({}) --old loot replaced by above SpawnPrefab, main function change
-			elseif plant_stress == FARM_PLANT_STRESS.LOW or plant_stress == FARM_PLANT_STRESS.NONE then
-				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed, inst.plant_def.seed})
-			elseif plant_stress == FARM_PLANT_STRESS.MODERATE then
-				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed})
-			else --plant_stress == FARM_PLANT_STRESS.HIGH
-				lootdropper:SetLoot({inst.plant_def.product})
 			end
 		end
 	end
