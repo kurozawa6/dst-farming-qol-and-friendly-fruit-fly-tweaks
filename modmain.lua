@@ -124,21 +124,21 @@ AddPrefabPostInit("lordfruitfly", function(inst) --functions that attempt to add
 		return index
 	end
 	if inst.components.lootdropper.chanceloot == nil then return end
-	local sharedLootTable = LootTables[inst.components.lootdropper.chanceloottable]
+	local shared_loot_table = LootTables[inst.components.lootdropper.chanceloottable]
 --Fruit Fly Fruit Loot Limiter based on Friendly Fruit Fly Prefab Count
 	if countprefabs("friendlyfruitfly") >= GetModConfigData("fffly_number_limit") then --this limits fruit fly fruit loots based on a number
-		if inLootTable(sharedLootTable, "fruitflyfruit") then
-			local index = getSharedLootTableIndex(sharedLootTable)
-			table.remove(sharedLootTable, index)
+		if inLootTable(shared_loot_table, "fruitflyfruit") then
+			local index = getSharedLootTableIndex(shared_loot_table)
+			table.remove(shared_loot_table, index)
 		end
 		return
 	end
-	local chanceLootTable = inst.components.lootdropper.chanceloot
-	if not inLootTable(chanceLootTable, "fruitflyfruit") and not inLootTable(sharedLootTable, "fruitflyfruit") then
-		table.insert(sharedLootTable, {"fruitflyfruit", 1.0 })
-	elseif inLootTable(chanceLootTable, "fruitflyfruit") and inLootTable(sharedLootTable, "fruitflyfruit") then
-		local index = getSharedLootTableIndex(sharedLootTable)
-		table.remove(sharedLootTable, index)
+	local chance_loot_table = inst.components.lootdropper.chanceloot
+	if not inLootTable(chance_loot_table, "fruitflyfruit") and not inLootTable(shared_loot_table, "fruitflyfruit") then
+		table.insert(shared_loot_table, {"fruitflyfruit", 1.0 })
+	elseif inLootTable(chance_loot_table, "fruitflyfruit") and inLootTable(shared_loot_table, "fruitflyfruit") then
+		local index = getSharedLootTableIndex(shared_loot_table)
+		table.remove(shared_loot_table, index)
 	end
 end)
 AddPrefabPostInit("fruitflyfruit", function(inst) --idnum attribute for fffruit used by custom functions below
@@ -170,17 +170,16 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 		end
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
-	local OnLoseChild = UpvalueHacker.GetUpvalue(Prefabs.fruitflyfruit.fn, "OnLoseChild")
+	local orig_OnPreLoadFruit = UpvalueHacker.GetUpvalue(Prefabs.fruitflyfruit.fn, "OnPreLoad")
 	local function OnPreLoadFruit(inst, data) --OnPreLoad and OnSave functions modified to load and save idnum
-		if data ~= nil and data.deadchild then
-			OnLoseChild(inst)
-		end
+		orig_OnPreLoadFruit(inst, data)
 		if data ~= nil and data.idnum then
 			inst.idnum = data.idnum
 		end
 	end
+	local orig_OnSaveFruit = UpvalueHacker.GetUpvalue(Prefabs.fruitflyfruit.fn, "OnSave")
 	local function OnSaveFruit(inst, data)
-		data.deadchild = not inst:HasTag("fruitflyfruit") or nil
+		orig_OnSaveFruit(inst, data)
 		data.idnum = inst.idnum or GetTime()
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnPreLoadFruit, "OnPreLoad")
