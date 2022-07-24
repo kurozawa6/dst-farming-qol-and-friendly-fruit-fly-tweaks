@@ -142,7 +142,7 @@ end)
 AddPrefabPostInit("fruitflyfruit", function(inst) --idnum attribute for fffruit used by custom functions below
 	inst.idnum = GetTime()
 end)
-AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflies binding via idnum
+AddPrefabPostInit("world", function() --custom functions for multiple ffflies binding via idnum
 	local function SpawnFriendlyFruitFly(inst, idnum) --added idnum argument to the original
 		local x, y, z = inst.Transform:GetWorldPosition()
 		local offset = FindWalkableOffset(Vector3(x, y, z), math.random() * 2 * PI, 35, 12, true)
@@ -183,16 +183,16 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnPreLoadFruit, "OnPreLoad")
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnSaveFruit, "OnSave")
 end)
+local function OnPreLoadFly(inst, data)
+	if data ~= nil and data.idnum then
+		inst.idnum = data.idnum
+	end
+	inst:AddTag(idnumToString(inst.idnum))
+end
+local function OnSaveFly(inst, data)
+	data.idnum = inst.idnum
+end
 AddPrefabPostInit("friendlyfruitfly", function(inst) --modifies OnPreLoad and OnSave functions of fffly
-	local function OnPreLoadFly(inst, data)
-		if data ~= nil and data.idnum then
-			inst.idnum = data.idnum
-		end
-		inst:AddTag(idnumToString(inst.idnum))
-	end
-	local function OnSaveFly(inst, data)
-		data.idnum = inst.idnum
-	end
 	inst.idnum = GetTime()
 	inst.OnPreLoad = OnPreLoadFly
 	inst.OnSave = OnSaveFly
@@ -216,9 +216,9 @@ end)
 AddStategraphPostInit("wilson", function(inst)
 	if not GetModConfigData("fast_planting") or ACTIONS.PLANTSOIL == nil then return end
 	if inst.actionhandlers[ACTIONS.PLANTSOIL].deststate == nil then return end
-	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function(inst, action) return "doshortaction" end
+	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function() return "doshortaction" end
 end)
-AddPrefabPostInit("world", function(inst)
+AddPrefabPostInit("world", function()
 --Giant Crop Obstacle Radius
 	local OVERSIZED_PHYSICS_RADIUS = GetModConfigData("giant_crop_collision_size")
 	UpvalueHacker.SetUpvalue(Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
