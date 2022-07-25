@@ -236,7 +236,7 @@ AddPrefabPostInit("world", function()
 	end
 	local orig_call_for_reinforcements = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "dig_up", "call_for_reinforcements")
 	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
-		if inst.is_oversized then
+		if inst.is_oversized and not inst:HasTag("farm_plant_killjoy") then
 			SpawnPseudoCropLoot(inst) --pseudo-loot, main function change
 			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound?, sound can't be made from empty loot
 		end
