@@ -10,11 +10,13 @@ and more!
 This mod is configurable and compatible with most mods.
 
 Enjoy!
+
+Latest Patch Notes: Further improved mod compatibility by patching patchable functions instead of replacing them
 ]]
 
 author = "Growth Mindset"
 
-version = "1.0"
+version = "1.1"
 
 forumthread = ""
 
