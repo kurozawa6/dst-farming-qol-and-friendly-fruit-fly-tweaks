@@ -9,8 +9,6 @@ local LootTables = GLOBAL.LootTables
 local FindWalkableOffset = GLOBAL.FindWalkableOffset
 local PI = GLOBAL.PI
 local Vector3 = GLOBAL.Vector3
-local TUNING = GLOBAL.TUNING
-local FARM_PLANT_STRESS = GLOBAL.FARM_PLANT_STRESS
 local FindEntity = GLOBAL.FindEntity
 local BufferedAction = GLOBAL.BufferedAction
 local distsq = GLOBAL.distsq
@@ -124,27 +122,27 @@ AddPrefabPostInit("lordfruitfly", function(inst) --functions that attempt to add
 		return index
 	end
 	if inst.components.lootdropper.chanceloot == nil then return end
-	local sharedLootTable = LootTables[inst.components.lootdropper.chanceloottable]
+	local shared_loot_table = LootTables[inst.components.lootdropper.chanceloottable]
 --Fruit Fly Fruit Loot Limiter based on Friendly Fruit Fly Prefab Count
 	if countprefabs("friendlyfruitfly") >= GetModConfigData("fffly_number_limit") then --this limits fruit fly fruit loots based on a number
-		if inLootTable(sharedLootTable, "fruitflyfruit") then
-			local index = getSharedLootTableIndex(sharedLootTable)
-			table.remove(sharedLootTable, index)
+		if inLootTable(shared_loot_table, "fruitflyfruit") then
+			local index = getSharedLootTableIndex(shared_loot_table)
+			table.remove(shared_loot_table, index)
 		end
 		return
 	end
-	local chanceLootTable = inst.components.lootdropper.chanceloot
-	if not inLootTable(chanceLootTable, "fruitflyfruit") and not inLootTable(sharedLootTable, "fruitflyfruit") then
-		table.insert(sharedLootTable, {"fruitflyfruit", 1.0 })
-	elseif inLootTable(chanceLootTable, "fruitflyfruit") and inLootTable(sharedLootTable, "fruitflyfruit") then
-		local index = getSharedLootTableIndex(sharedLootTable)
-		table.remove(sharedLootTable, index)
+	local chance_loot_table = inst.components.lootdropper.chanceloot
+	if not inLootTable(chance_loot_table, "fruitflyfruit") and not inLootTable(shared_loot_table, "fruitflyfruit") then
+		table.insert(shared_loot_table, {"fruitflyfruit", 1.0 })
+	elseif inLootTable(chance_loot_table, "fruitflyfruit") and inLootTable(shared_loot_table, "fruitflyfruit") then
+		local index = getSharedLootTableIndex(shared_loot_table)
+		table.remove(shared_loot_table, index)
 	end
 end)
 AddPrefabPostInit("fruitflyfruit", function(inst) --idnum attribute for fffruit used by custom functions below
 	inst.idnum = GetTime()
 end)
-AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflies binding via idnum
+AddPrefabPostInit("world", function() --custom functions for multiple ffflies binding via idnum
 	local function SpawnFriendlyFruitFly(inst, idnum) --added idnum argument to the original
 		local x, y, z = inst.Transform:GetWorldPosition()
 		local offset = FindWalkableOffset(Vector3(x, y, z), math.random() * 2 * PI, 35, 12, true)
@@ -170,32 +168,31 @@ AddPrefabPostInit("world", function(inst) --custom functions for multiple ffflie
 		end
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnInit, "OnInit")
-	local OnLoseChild = UpvalueHacker.GetUpvalue(Prefabs.fruitflyfruit.fn, "OnLoseChild")
+	local orig_OnPreLoadFruit = UpvalueHacker.GetUpvalue(Prefabs.fruitflyfruit.fn, "OnPreLoad")
 	local function OnPreLoadFruit(inst, data) --OnPreLoad and OnSave functions modified to load and save idnum
-		if data ~= nil and data.deadchild then
-			OnLoseChild(inst)
-		end
+		orig_OnPreLoadFruit(inst, data)
 		if data ~= nil and data.idnum then
 			inst.idnum = data.idnum
 		end
 	end
+	local orig_OnSaveFruit = UpvalueHacker.GetUpvalue(Prefabs.fruitflyfruit.fn, "OnSave")
 	local function OnSaveFruit(inst, data)
-		data.deadchild = not inst:HasTag("fruitflyfruit") or nil
+		orig_OnSaveFruit(inst, data)
 		data.idnum = inst.idnum or GetTime()
 	end
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnPreLoadFruit, "OnPreLoad")
 	UpvalueHacker.SetUpvalue(Prefabs.fruitflyfruit.fn, OnSaveFruit, "OnSave")
 end)
+local function OnPreLoadFly(inst, data)
+	if data ~= nil and data.idnum then
+		inst.idnum = data.idnum
+	end
+	inst:AddTag(idnumToString(inst.idnum))
+end
+local function OnSaveFly(inst, data)
+	data.idnum = inst.idnum
+end
 AddPrefabPostInit("friendlyfruitfly", function(inst) --modifies OnPreLoad and OnSave functions of fffly
-	local function OnPreLoadFly(inst, data)
-		if data ~= nil and data.idnum then
-			inst.idnum = data.idnum
-		end
-		inst:AddTag(idnumToString(inst.idnum))
-	end
-	local function OnSaveFly(inst, data)
-		data.idnum = inst.idnum
-	end
 	inst.idnum = GetTime()
 	inst.OnPreLoad = OnPreLoadFly
 	inst.OnSave = OnSaveFly
@@ -219,9 +216,9 @@ end)
 AddStategraphPostInit("wilson", function(inst)
 	if not GetModConfigData("fast_planting") or ACTIONS.PLANTSOIL == nil then return end
 	if inst.actionhandlers[ACTIONS.PLANTSOIL].deststate == nil then return end
-	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function(inst, action) return "doshortaction" end
+	inst.actionhandlers[ACTIONS.PLANTSOIL].deststate = function() return "doshortaction" end
 end)
-AddPrefabPostInit("world", function(inst)
+AddPrefabPostInit("world", function()
 --Giant Crop Obstacle Radius
 	local OVERSIZED_PHYSICS_RADIUS = GetModConfigData("giant_crop_collision_size")
 	UpvalueHacker.SetUpvalue(Prefabs.potato_oversized.fn, OVERSIZED_PHYSICS_RADIUS, "OVERSIZED_PHYSICS_RADIUS")
@@ -237,38 +234,22 @@ AddPrefabPostInit("world", function(inst)
 			--return pseudoloot
 		end
 	end
+	local orig_call_for_reinforcements = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "dig_up", "call_for_reinforcements")
 	local function call_for_reinforcements(inst, target) --the only function I found reachable by upvalue hack
 		if inst.is_oversized then
 			SpawnPseudoCropLoot(inst) --pseudo-loot, main function change
 			target.SoundEmitter:PlaySound("dontstarve/wilson/pickup_plants") --pseudo-sound?, sound can't be made from empty loot
 		end
-		if not target:HasTag("plantkin") then
-			local x, y, z = inst.Transform:GetWorldPosition()
-			local defenders = TheSim:FindEntities(x, y, z, TUNING.FARM_PLANT_DEFENDER_SEARCH_DIST, {"farm_plant_defender"})
-			for _, defender in ipairs(defenders) do
-				if defender.components.burnable == nil or not defender.components.burnable.burning then
-					defender:PushEvent("defend_farm_plant", {source = inst, target = target})
-					break
-				end
-			end
-		end
+		return orig_call_for_reinforcements(inst, target)
 	end
-	local spoiled_food_loot = {"spoiled_food"} --defined as such from the original at the time of coding
 	UpvalueHacker.SetUpvalue(Prefabs.farm_plant_potato.fn, call_for_reinforcements, "dig_up", "call_for_reinforcements")
+	local orig_SetupLoot = UpvalueHacker.GetUpvalue(Prefabs.farm_plant_potato.fn, "SetupLoot")
 	local function SetupLoot(lootdropper)
+		orig_SetupLoot(lootdropper)
 		local inst = lootdropper.inst
-		if inst:HasTag("farm_plant_killjoy") then --if rotten
-			lootdropper:SetLoot(inst.is_oversized and inst.plant_def.loot_oversized_rot or spoiled_food_loot)
-		elseif inst.components.pickable ~= nil then
-			local plant_stress = inst.components.farmplantstress ~= nil and inst.components.farmplantstress:GetFinalStressState() or FARM_PLANT_STRESS.HIGH
+		if not inst:HasTag("farm_plant_killjoy") and inst.components.pickable ~= nil then
 			if inst.is_oversized then
 				lootdropper:SetLoot({}) --old loot replaced by above SpawnPrefab, main function change
-			elseif plant_stress == FARM_PLANT_STRESS.LOW or plant_stress == FARM_PLANT_STRESS.NONE then
-				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed, inst.plant_def.seed})
-			elseif plant_stress == FARM_PLANT_STRESS.MODERATE then
-				lootdropper:SetLoot({inst.plant_def.product, inst.plant_def.seed})
-			else --plant_stress == FARM_PLANT_STRESS.HIGH
-				lootdropper:SetLoot({inst.plant_def.product})
 			end
 		end
 	end
